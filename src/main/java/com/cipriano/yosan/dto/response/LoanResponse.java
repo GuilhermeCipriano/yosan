@@ -4,6 +4,7 @@ import com.cipriano.yosan.dto.LoanInstallment;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 
@@ -11,11 +12,11 @@ import java.util.ArrayList;
 @Builder
 public class LoanResponse {
 
-    String loanValue;
+    BigDecimal loanValue;
     LocalDate initialDate;
     LocalDate endDate;
     LocalDate firstPaymentDate;
-    String taxRate;
+    BigDecimal taxRate;
     ArrayList<LoanInstallment> installmentList;
 
 }

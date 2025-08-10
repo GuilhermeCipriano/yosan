@@ -3,6 +3,7 @@ package com.cipriano.yosan;
 import com.cipriano.yosan.dto.LoanInstallment;
 import com.cipriano.yosan.dto.request.LoanRequest;
 
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.time.Period;
@@ -13,42 +14,38 @@ public abstract class LoanUtils {
 
     private static final DecimalFormatSymbols symbols = new DecimalFormatSymbols(new Locale("pt", "BR"));
     private static final DecimalFormat df = new DecimalFormat("#,##0.00", symbols);
-
-    public static Float calculateLoanPrice(LoanRequest loanRequest) {
-        Period period = Period.between(loanRequest.getEndDate(), loanRequest.getInitialDate());
-
-        Float decimalTaxRate = Float.parseFloat(loanRequest.getTaxRate()) / 100.0F;
-        Float factor = (float) Math.pow(1 + decimalTaxRate, period.getMonths());
-
-        return Float.parseFloat(loanRequest.getLoanValue()) * (decimalTaxRate * factor) / (factor - 1);
-
-    }
+    public static final int MONTHS_IN_A_YEAR = 12;
+    public static final int DAYS_IN_A_YEAR = 30;
 
     public static ArrayList<LoanInstallment>  calculateLoanSAC(LoanRequest loanRequest) {
-        Period period = Period.between(loanRequest.getInitialDate(), loanRequest.getEndDate());
+
         ArrayList<LoanInstallment> loanInstallmentList = new ArrayList<>();
-        int months = period.getYears() * 12 + period.getMonths();
+
+        int months = getTotalMonthLoan(loanRequest);
         float[] installments = new float[months];
-        float paidDebtValue = Float.parseFloat(loanRequest.getLoanValue()) / (float) months;
-        float remainingBalance = Float.parseFloat(loanRequest.getLoanValue());
 
-//        todo: double firstInstallmente = ...
+        float MonthlyPaidDebtValue = Float.parseFloat(String.valueOf(loanRequest.getLoanValue())) / (float) months;
+        float remainingBalance = Float.parseFloat(String.valueOf(loanRequest.getLoanValue()));
 
-        for (int installmentNumber = 1; installmentNumber <= months; installmentNumber++) {
 
-            float taxValue = remainingBalance * (Float.parseFloat(loanRequest.getTaxRate()) / 100.0F / 12);
-            float installmentValue = paidDebtValue + taxValue;
+
+        for (int installmentNumber = 1; installmentNumber < months; installmentNumber++) {
+
+            float taxValue = getMonthlyTaxValue(String.valueOf(loanRequest.getTaxRate()), remainingBalance);
+            float installmentValue = MonthlyPaidDebtValue + taxValue;
+
             installments[installmentNumber] = installmentValue;
 
-            remainingBalance -= paidDebtValue;
+
+            remainingBalance -= MonthlyPaidDebtValue;
 
             loanInstallmentList.add(
                     LoanInstallment.builder()
                             .installmentNumber(String.valueOf(installmentNumber))
-                            .taxValue(formatValue(taxValue))
-                            .paidDebtValue(formatValue(paidDebtValue))
-                            .installmentValue(formatValue(installmentValue))
-                            .remainingBalance(formatValue(remainingBalance))
+                            .taxValue(BigDecimal.valueOf(taxValue))
+                            .paidDebtValue(BigDecimal.valueOf(MonthlyPaidDebtValue))
+                            .installmentValue(BigDecimal.valueOf(installmentValue))
+                            .remainingBalance(BigDecimal.valueOf(remainingBalance))
                             .date(loanRequest.getFirstPaymentDate().plusMonths(installmentNumber))
                             .build()
             );
@@ -63,4 +60,14 @@ public abstract class LoanUtils {
     }
 
 
+    private static float getMonthlyTaxValue(String taxRate, float remainingBalance) {
+        return remainingBalance * (Float.parseFloat(taxRate) / 100.0F / MONTHS_IN_A_YEAR);
+
+    }
+
+    private static int getTotalMonthLoan(LoanRequest loanRequest) {
+        Period period = Period.between(loanRequest.getInitialDate(), loanRequest.getEndDate());
+        return period.getYears() * MONTHS_IN_A_YEAR + period.getMonths();
+
+    }
 }

@@ -16,8 +16,9 @@ public class LoanCalculatorController {
     LoanServiceImpl loanServiceImpl;
 
 
-    @GetMapping("/calculate-sac-loan")
-    LoanResponse calculateSACLoan(@RequestBody LoanRequest loanRequest) {
+    @PostMapping("/calculate-sac-loan")
+    LoanResponse calculateSACLoan(@RequestBody LoanRequest loanRequest) throws InterruptedException {
+        Thread.sleep(1000);
         return this.loanServiceImpl.calculateLoan(loanRequest);
     }
 
