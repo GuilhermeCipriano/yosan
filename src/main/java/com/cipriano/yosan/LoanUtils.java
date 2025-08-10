@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.time.Period;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Locale;
 
@@ -15,7 +16,7 @@ public abstract class LoanUtils {
     private static final DecimalFormatSymbols symbols = new DecimalFormatSymbols(new Locale("pt", "BR"));
     private static final DecimalFormat df = new DecimalFormat("#,##0.00", symbols);
     public static final int MONTHS_IN_A_YEAR = 12;
-    public static final int DAYS_IN_A_YEAR = 30;
+    public static final int DAYS_IN_A_YEAR = 365;
 
     public static ArrayList<LoanInstallment>  calculateLoanSAC(LoanRequest loanRequest) {
 
@@ -29,9 +30,15 @@ public abstract class LoanUtils {
 
 
 
-        for (int installmentNumber = 1; installmentNumber < months; installmentNumber++) {
+        for (int installmentNumber = 0; installmentNumber < months; installmentNumber++) {
+            float taxValue = 0f;
 
-            float taxValue = getMonthlyTaxValue(String.valueOf(loanRequest.getTaxRate()), remainingBalance);
+            if (installmentNumber == 0) {
+                taxValue =  getDailyTaxValue(String.valueOf(loanRequest.getTaxRate()), remainingBalance, getTotalGraceDays(loanRequest));
+            } else {
+                taxValue = getMonthlyTaxValue(String.valueOf(loanRequest.getTaxRate()), remainingBalance);
+            }
+
             float installmentValue = MonthlyPaidDebtValue + taxValue;
 
             installments[installmentNumber] = installmentValue;
@@ -41,7 +48,7 @@ public abstract class LoanUtils {
 
             loanInstallmentList.add(
                     LoanInstallment.builder()
-                            .installmentNumber(String.valueOf(installmentNumber))
+                            .installmentNumber(String.valueOf(installmentNumber+1))
                             .taxValue(BigDecimal.valueOf(taxValue))
                             .paidDebtValue(BigDecimal.valueOf(MonthlyPaidDebtValue))
                             .installmentValue(BigDecimal.valueOf(installmentValue))
@@ -59,9 +66,18 @@ public abstract class LoanUtils {
         return df.format(valor);
     }
 
+    private static float getDailyTaxValue(String taxRate, float remainingBalance, float gracePeriodDays) {
+        return remainingBalance * (Float.parseFloat(taxRate) / 100.0F / DAYS_IN_A_YEAR) * gracePeriodDays;
+
+    }
 
     private static float getMonthlyTaxValue(String taxRate, float remainingBalance) {
         return remainingBalance * (Float.parseFloat(taxRate) / 100.0F / MONTHS_IN_A_YEAR);
+
+    }
+
+    private static float getTotalGraceDays(LoanRequest loanRequest) {
+        return (float) ChronoUnit.DAYS.between(loanRequest.getInitialDate(), loanRequest.getFirstPaymentDate());
 
     }
 
