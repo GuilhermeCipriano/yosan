@@ -54,20 +54,23 @@ public abstract class LoanUtils {
                 LOGGER.info("method::getFirstMonthTax returned: {}", taxValue);
             } else {
                 LOGGER.info("method::isLastInstallment returned false");
-                taxValue = getOtherMonthTax(loanRequest, remainingBalance, gracePeriodDays);
+                // Para as demais, calcula juros mensais sobre o saldo devedor
+                taxValue = getOtherMonthTax(loanRequest, remainingBalance);
                 LOGGER.info("method::getOtherMonthTax returned: {}", taxValue);
             }
+
             LocalDate finalInstallmentDate = currentPaymentDate;
 
             if (isLastInstallment(installmentNumber, months)) {
                 LOGGER.info("method::isLastInstallment returned true");
                 monthlyAmortization = remainingBalance;
                 finalInstallmentDate = loanRequest.getEndDate();
+
             }
 
             BigDecimal installmentValue = monthlyAmortization.add(taxValue);
             remainingBalance = remainingBalance.subtract(monthlyAmortization);
-            ;
+
             loanInstallmentList.add(
                     LoanInstallment.builder()
                             .installmentNumber(String.valueOf(installmentNumber))
@@ -115,10 +118,10 @@ public abstract class LoanUtils {
        ).multiply(gracePeriodDays);
     }
 
-    private static BigDecimal getOtherMonthTax(LoanRequest loanRequest, BigDecimal remainingBalance, BigDecimal gracePeriodDays) {
+    private static BigDecimal getOtherMonthTax(LoanRequest loanRequest, BigDecimal remainingBalance) {
+
         return remainingBalance.multiply(
-                getMonthlyTaxRate(loanRequest)
-        ).multiply(gracePeriodDays);
+                getMonthlyTaxRate(loanRequest));
     }
 
     private static boolean isPaymentOnLastDayOfMonth(LoanRequest loanRequest) {
