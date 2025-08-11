@@ -1,7 +1,8 @@
 package com.cipriano.yosan;
-
 import com.cipriano.yosan.dto.LoanInstallment;
 import com.cipriano.yosan.dto.request.LoanRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.time.Period;
@@ -19,13 +20,18 @@ public abstract class LoanUtils {
     public static final int TAX_SCALE = 10;
     public static final BigDecimal BIG_DECIMAL_TAX_RATE_BASE = new BigDecimal(100);
     public static final int FIRST_INSTALLMENT = 0;
+    private static final Logger LOGGER = LoggerFactory.getLogger(LoanUtils.class);
 
     public static ArrayList<LoanInstallment> calculateLoanSAC(LoanRequest loanRequest) {
+        LOGGER.info("method::calculateLoanSAC called");
+        LOGGER.info("data request: {}", loanRequest.toString());
+
         ArrayList<LoanInstallment> loanInstallmentList = new ArrayList<>();
 
         int months = getTotalMonthLoan(loanRequest);
 
         if (months <= 0) {
+            LOGGER.warn("NO MONTHS FOUND, RETURNING EMPTY LIST");
             return new ArrayList<>();
         }
 
@@ -36,29 +42,32 @@ public abstract class LoanUtils {
 
         LocalDate currentPaymentDate = loanRequest.getFirstPaymentDate();
 
+        LOGGER.info("VALUES FOUND, START LOAN CALCULATION");
         for (int installment = 0; installment < months; installment++) {
             int installmentNumber = installment + 1;
 
             BigDecimal taxValue;
 
             if (isLastInstallment(installment, FIRST_INSTALLMENT)) {
+                LOGGER.info("method::isLastInstallment returned true");
                 taxValue = getFirstMonthTax(loanRequest, remainingBalance, gracePeriodDays);
+                LOGGER.info("method::getFirstMonthTax returned: {}", taxValue);
             } else {
+                LOGGER.info("method::isLastInstallment returned false");
                 taxValue = getOtherMonthTax(loanRequest, remainingBalance, gracePeriodDays);
+                LOGGER.info("method::getOtherMonthTax returned: {}", taxValue);
             }
+            LocalDate finalInstallmentDate = currentPaymentDate;
 
             if (isLastInstallment(installmentNumber, months)) {
+                LOGGER.info("method::isLastInstallment returned true");
                 monthlyAmortization = remainingBalance;
+                finalInstallmentDate = loanRequest.getEndDate();
             }
 
             BigDecimal installmentValue = monthlyAmortization.add(taxValue);
             remainingBalance = remainingBalance.subtract(monthlyAmortization);
-            LocalDate finalInstallmentDate = currentPaymentDate;
-
-            if (isLastInstallment(installmentNumber, months)) {
-                finalInstallmentDate = loanRequest.getEndDate();
-            }
-
+            ;
             loanInstallmentList.add(
                     LoanInstallment.builder()
                             .installmentNumber(String.valueOf(installmentNumber))
@@ -71,16 +80,19 @@ public abstract class LoanUtils {
             );
 
             if (isPaymentOnLastDayOfMonth(loanRequest)) {
+                LOGGER.info("method::isPaymentOnLastDayOfMonth returned true");
                 currentPaymentDate = currentPaymentDate.plusMonths(1).with(TemporalAdjusters.lastDayOfMonth());
             } else {
                 currentPaymentDate = currentPaymentDate.plusMonths(1);
             }
         }
 
+        LOGGER.info("method::calculateLoanSAC end");
         return loanInstallmentList;
     }
 
     private static boolean isLastInstallment(int installmentNumber, int months) {
+        LOGGER.info("method::isLastInstallment called");
         return installmentNumber == months;
     }
 
@@ -97,7 +109,8 @@ public abstract class LoanUtils {
     }
 
     private static BigDecimal getFirstMonthTax(LoanRequest loanRequest, BigDecimal remainingBalance, BigDecimal gracePeriodDays) {
-       return remainingBalance.multiply(
+        LOGGER.info("method::getFirstMonthTax called");
+        return remainingBalance.multiply(
                getDailyTaxRate(loanRequest)
        ).multiply(gracePeriodDays);
     }
@@ -109,14 +122,17 @@ public abstract class LoanUtils {
     }
 
     private static boolean isPaymentOnLastDayOfMonth(LoanRequest loanRequest) {
+        LOGGER.info("method::isPaymentOnLastDayOfMonth called");
         return loanRequest.getFirstPaymentDate().getDayOfMonth() == loanRequest.getFirstPaymentDate().lengthOfMonth();
     }
 
     private static BigDecimal getGracePeriodDays(LoanRequest loanRequest) {
+        LOGGER.info("method::getGracePeriodDays called");
         return new BigDecimal(ChronoUnit.DAYS.between(loanRequest.getInitialDate(), loanRequest.getFirstPaymentDate()));
     }
 
     private static int getTotalMonthLoan(LoanRequest loanRequest) {
+        LOGGER.info("method::getTotalMonthLoan called");
         Period period = Period.between(loanRequest.getInitialDate(), loanRequest.getEndDate());
         return period.getYears() * MONTHS_IN_A_YEAR + period.getMonths();
     }

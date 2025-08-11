@@ -22,9 +22,11 @@ public class LoanCalculatorController {
 
     @PostMapping("/calculate-sac-loan")
     ResponseEntity<LoanResponse> calculateSACLoan(@RequestBody LoanRequest loanRequest) throws InterruptedException {
+        LOGGER.info("method::calculateSACLoan called");
         try {
             Thread.sleep(1000);
             LoanResponse responseBody = this.loanServiceImpl.calculateLoan(loanRequest);
+            LOGGER.info("method::calculateSACLoan succeeded");
             return ResponseEntity.ok(responseBody);
         } catch (IllegalArgumentException e) {
             LOGGER.warn("Invalid data, plase chack: {}", e.getMessage());
